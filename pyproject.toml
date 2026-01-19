@@ -7,6 +7,12 @@ license = { text = "MIT" }
 authors = [
     { name = "xxlv", email = "lvxiang119@gmail.com" }
 ]
+
+[project.urls]
+Homepage = "https://github.com/yomemoai/python-yomemo-mcp"
+Documentation = "https://github.com/yomemoai/python-yomemo-mcp#readme"
+Repository = "https://github.com/yomemoai/python-yomemo-mcp"
+Issues = "https://github.com/yomemoai/python-yomemo-mcp/issues"
 requires-python = ">=3.12"
 keywords = ["mcp", "mcp-server", "yomemoai", "memory", "ai", "claude", "cursor"]
 classifiers = [
