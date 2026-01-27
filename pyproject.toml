@@ -1,18 +1,12 @@
 [project]
 name = "yomemoai-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Model Context Protocol (MCP) server for YoMemoAI - enables AI assistants to save and retrieve encrypted memories"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
     { name = "xxlv", email = "lvxiang119@gmail.com" }
 ]
-
-[project.urls]
-Homepage = "https://github.com/yomemoai/python-yomemo-mcp"
-Documentation = "https://github.com/yomemoai/python-yomemo-mcp#readme"
-Repository = "https://github.com/yomemoai/python-yomemo-mcp"
-Issues = "https://github.com/yomemoai/python-yomemo-mcp/issues"
 requires-python = ">=3.12"
 keywords = ["mcp", "mcp-server", "yomemoai", "memory", "ai", "claude", "cursor"]
 classifiers = [
@@ -32,9 +26,14 @@ dependencies = [
     "requests>=2.32.5",
 ]
 
+[project.urls]
+Homepage = "https://github.com/yomemoai/python-yomemo-mcp"
+Documentation = "https://github.com/yomemoai/python-yomemo-mcp#readme"
+Repository = "https://github.com/yomemoai/python-yomemo-mcp"
+Issues = "https://github.com/yomemoai/python-yomemo-mcp/issues"
+
 [project.scripts]
 yomemoai-mcp = "yomemoai_mcp.server:mcp.run"
-yomemo = "yomemoai_mcp.server:mcp.run"
 memo-mcp = "yomemoai_mcp.server:mcp.run"
 
 [build-system]
