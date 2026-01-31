@@ -76,6 +76,11 @@ After configuration, you can run the MCP server using:
 uv run memo-mcp
 ```
 
+### Cursor best practice (recommended)
+
+Want the AI to **proactively** save memories when it detects preferences or decisions (not only when you say "remember")?  
+Add one rule in Cursor's Rules for AI—see **[CURSOR_RULES.md](./CURSOR_RULES.md)**.
+
 ### Integration with Cursor/Claude Desktop
 
 Add the following configuration to your MCP settings file:

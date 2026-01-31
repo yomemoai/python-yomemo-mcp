@@ -1,10 +1,15 @@
 import asyncio
 import json
 import logging
+import os
 import sys
 from mcp.server.fastmcp import FastMCP
 from .client import MemoClient, MemoRequestError
-import os
+
+if "--version" in sys.argv or "-version" in sys.argv:
+    from importlib.metadata import version
+    print(version("yomemoai-mcp"))
+    sys.exit(0)
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -56,12 +61,13 @@ def _format_payload(payload: dict) -> dict:
 @mcp.tool()
 async def save_memory(content: str, handle: str = "general", description: str = "") -> str:
     """
-    Store important information, user preferences, or conversation context as a permanent memory.
-    Use this tool when the user explicitly asks to 'remember', 'save', or 'keep track of' something.
+    Store important information as a permanent memory. You should call this proactively when you
+    detect user preferences, important decisions, reusable logic, or context worth recalling later—
+    not only when the user explicitly says "remember" or "save". After saving successfully, reply with ✓.
 
     :param content: The actual text/information to be remembered. Be concise but maintain context.
     :param handle: A short, unique category or tag (e.g., 'work', 'personal', 'project-x'). Defaults to 'general'.
-    :param description: A brief summary of what this memory is about to help with future identification. don't include any sensitive information.
+    :param description: A brief, non-sensitive summary or tag for this memory (helps future identification and search).
     """
     logger.debug(
         f"save_memory called: handle={handle}, description={description}, content_length={len(content)}")
@@ -104,12 +110,11 @@ async def save_memory(content: str, handle: str = "general", description: str = 
 @mcp.tool()
 async def load_memories(handle: str = None) -> str:
     """
-    Retrieve previously stored memories or context. 
-    Use this tool when the user asks 'what do you remember about...', 'check my notes on...', or when 
-    you need historical context to answer a question accurately.
+    Retrieve previously stored memories. Call this when the user asks what you remember, or when you
+    need historical context (preferences, past decisions, project details) to answer accurately.
 
-    :param handle: Optional filter. If the user specifies a category (e.g., 'about my job'), 
-                   extract and provide the relevant handle.
+    :param handle: Optional filter. If the user specifies a category (e.g., 'work', 'project-x'),
+                   use the relevant handle; otherwise omit to load across handles.
     """
     logger.debug(f"load_memories called: handle={handle}")
     try:
