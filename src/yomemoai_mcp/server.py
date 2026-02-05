@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import sys
+from typing import Optional
+
 from mcp.server.fastmcp import FastMCP
 from .client import MemoClient, MemoRequestError
 
@@ -108,13 +110,17 @@ async def save_memory(content: str, handle: str = "general", description: str = 
 
 
 @mcp.tool()
-async def load_memories(handle: str = None) -> str:
+async def load_memories(handle: Optional[str] = None) -> str:
     """
     Retrieve previously stored memories. Call this when the user asks what you remember, or when you
     need historical context (preferences, past decisions, project details) to answer accurately.
 
     :param handle: Optional filter. If the user specifies a category (e.g., 'work', 'project-x'),
                    use the relevant handle; otherwise omit to load across handles.
+
+    The output includes each memory's handle, idempotent key, and content so that callers can
+    later use the same idempotent key with save_memory to update existing memories instead of
+    creating duplicates.
     """
     logger.debug(f"load_memories called: handle={handle}")
     try:
@@ -128,9 +134,16 @@ async def load_memories(handle: str = None) -> str:
 
         output = ["### Retrieved Memories:"]
         for m in memories:
-            timestamp = m.get('created_at', 'N/A')
+            handle_value = m.get("handle")
+            idempotent_key = m.get("idempotent_key") or "N/A"
+            content = m.get("content")
+
             output.append(
-                f"Handle: [{m.get('handle')}]\nContent: {m.get('content')}\n---"
+                "Handle: [{handle}]\nIdempotent Key: {key}\nContent: {content}\n---".format(
+                    handle=handle_value,
+                    key=idempotent_key,
+                    content=content,
+                )
             )
         logger.info(f"Successfully loaded {len(memories)} memories")
         return "\n".join(output)

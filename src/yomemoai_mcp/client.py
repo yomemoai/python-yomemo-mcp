@@ -1,4 +1,5 @@
 import base64
+from cryptography.hazmat.primitives.ciphers.modes import GCM
 import json
 import logging
 import time
@@ -104,7 +105,7 @@ class MemoClient:
             tag = combined_data[-16:]
             ciphertext = combined_data[12:-16]
 
-            cipher = Cipher(algorithms.AES(aes_key), modes.GCM(
+            cipher = Cipher[GCM](algorithms.AES(aes_key), modes.GCM(
                 nonce, tag), backend=default_backend())
             decryptor = cipher.decryptor()
             return decryptor.update(ciphertext) + decryptor.finalize()
@@ -184,6 +185,10 @@ class MemoClient:
         resp.raise_for_status()
 
         memories = resp.json().get("data", [])
+        # Backend may return `data: null` when there are no memories; normalize to empty list.
+        if memories is None:
+            memories = []
+
         for m in memories:
             try:
                 decrypted = self.unpack_and_decrypt(m["content"])
