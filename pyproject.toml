@@ -1,6 +1,6 @@
 [project]
 name = "yomemoai-mcp"
-version = "0.1.3"
+version = "0.1.4"
 description = "Model Context Protocol (MCP) server for YoMemoAI - enables AI assistants to save and retrieve encrypted memories"
 readme = "README.md"
 license = { text = "MIT" }
