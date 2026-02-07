@@ -18,6 +18,7 @@ You are equipped with Yomemo.ai MCP.
 
 ## When to use `load_memories`:
 - At the start of a new feature implementation, check if there's relevant context in the 'coding' or 'project-name' handle.
+- **To avoid token explosion**: Call first with `mode='summary'` or `mode='metadata'` (default is summary) to get a lightweight list; use the returned "Next cursor" for pagination. Only call with `mode='full'` when you need decrypted content for the current page (same cursor/limit).
 
 ## Feedback:
 - After saving, just add a ✓ in your response. No need for a long confirmation.

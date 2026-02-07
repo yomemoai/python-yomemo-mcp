@@ -81,6 +81,38 @@ uv run memo-mcp
 Want the AI to **proactively** save memories when it detects preferences or decisions (not only when you say "remember")?  
 Add one rule in Cursor's Rules for AI—see **[CURSOR_RULES.md](./CURSOR_RULES.md)**.
 
+### Debugging the MCP server
+
+You can debug the MCP server with breakpoints in Cursor/VS Code:
+
+1. **Install dev dependency** (includes `debugpy`):
+
+   ```bash
+   uv sync --extra dev
+   ```
+
+2. **Temporarily point Cursor at the debug entrypoint**  
+   In `~/.cursor/mcp.json`, set the server command to (path must be the repo directory):
+
+   ```json
+   "yomemoai": {
+     "command": "uv",
+     "args": ["run", "yomemoai-mcp-debug"],
+     "env": { ... },
+     "cwd": "/absolute/path/to/python-yomemo-mcp"
+   }
+   ```
+
+3. **Open the project**  
+   Open the `python-yomemo-mcp` folder in Cursor (or the repo with this project inside).
+
+4. **Start the server and attach**  
+   - Run & Debug → choose **「MCP Server (启动并等待附加)」** and start (F5).  
+   - Then choose **「Attach to MCP Server (附加到 5678)」** and start.  
+   - After attach, the server continues; use any MCP tool in Cursor to hit your breakpoints.
+
+5. **Restore normal MCP config** when done (e.g. `uv run yomemoai-mcp` or `uvx yomemoai-mcp`).
+
 ### Integration with Cursor/Claude Desktop
 
 Add the following configuration to your MCP settings file:
@@ -144,13 +176,35 @@ For local development or if the package is not yet published, use the `uv --dire
 }
 ```
 
+**MCP Inspector（无 `cwd` 时）**  
+若工具没有 `cwd` 配置，把工作目录放进 `args` 即可，例如：
+
+```json
+{
+  "command": "uv",
+  "args": [
+    "--directory",
+    "/Users/lvxiang/work/shared/github/memo/python-yomemo-mcp",
+    "run",
+    "yomemoai-mcp"
+  ],
+  "env": {
+    "MEMO_API_KEY": "你的 API Key",
+    "MEMO_PRIVATE_KEY_PATH": "private.pem",
+    "MEMO_BASE_URL": "https://api.yomemo.ai"
+  }
+}
+```
+
+把 `--directory` 后面的路径改成你本机项目目录的**绝对路径**。
+
 **Important Notes:**
 
 - **For Option 1 (`uvx`)**: The package must be published to PyPI. `uvx` will automatically handle installation and execution.
-- **For Option 2 (local)**: Replace `/absolute/path/to/yomemoai-mcp` with the **absolute path** to this repository on your system
-- Replace `/absolute/path/to/private.pem` with the **absolute path** to your private key file
-- The `env` section in the MCP config will override any `.env` file in the project directory
-- After updating the MCP config, restart Cursor/Claude Desktop for changes to take effect
+- **For Option 2 (local) / MCP Inspector**: Replace the path after `--directory` with the **absolute path** to this repo (e.g. `/Users/you/work/python-yomemo-mcp`). No `cwd` field is needed.
+- Replace `MEMO_PRIVATE_KEY_PATH` with a path relative to the project dir (e.g. `private.pem`) or an absolute path to your private key file.
+- The `env` section in the MCP config will override any `.env` file in the project directory.
+- After updating the MCP config, restart Cursor/Claude Desktop / MCP Inspector for changes to take effect.
 
 ### Available Tools
 
@@ -166,11 +220,19 @@ Store important information, user preferences, or conversation context as a perm
 
 #### `load_memories`
 
-Retrieve previously stored memories or context.
+Retrieve previously stored memories with optional pagination and lightweight modes to reduce token usage.
 
 **Parameters:**
 
-- `handle` (optional): Filter memories by category. If not specified, returns all memories
+- `handle` (optional): Filter memories by category. If not specified, returns memories across all handles.
+- `limit` (default 20): Number of memories per page. Use with `cursor` for pagination.
+- `cursor` (optional): Pagination cursor from the previous response's "Next cursor" line. Omit for the first page.
+- `mode`: What to return:
+  - `"summary"` (default): Description + metadata + id/handle/idempotent_key only (no decrypted content). Use first to scan and decide.
+  - `"metadata"`: Only id, handle, created_at, metadata. Smallest payload.
+  - `"full"`: Full decrypted content. Use after you need details for the current page (same cursor/limit as the summary call).
+
+**Recommended flow:** Call with `mode='summary'` or `mode='metadata'` first; use the returned "Next cursor" to paginate or call again with `mode='full'` and the same cursor to load full content for that page.
 
 ## Development
 

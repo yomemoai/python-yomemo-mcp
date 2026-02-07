@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .env
+
+# Debug log (only written when MEMO_DEBUG=true)
+yomemo-mcp.log

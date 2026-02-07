@@ -4,7 +4,7 @@ import json
 import logging
 import time
 import requests
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -128,6 +128,11 @@ class MemoClient:
         token_size = len(content)
         logger.debug(
             f"Adding memory: handle={handle}, content_length={token_size}, description={description}")
+        logger.info(
+            "add_memory request: handle=%s content_len=%s description_len=%s content_preview=%s",
+            handle, token_size, len(description or ""),
+            (content[:80] + "..." if len(content) > 80 else content)[:100],
+        )
 
         packed = self.pack_data(content.encode('utf-8'))
         logger.debug(f"Packed data length: {len(packed)}")
@@ -166,6 +171,12 @@ class MemoClient:
 
             result = resp.json()
             logger.debug(f"Success response: {result}")
+            mem_id = result.get("memory_id") or (result.get("data") or [{}])[0].get("id") if result.get("data") else None
+            idem_key = result.get("idempotent_key") or (result.get("data") or [{}])[0].get("idempotent_key") if result.get("data") else None
+            logger.info(
+                "add_memory response: memory_id=%s idempotent_key=%s response_keys=%s",
+                mem_id, idem_key, list(result.keys()) if isinstance(result, dict) else type(result).__name__,
+            )
             return result
         except requests.exceptions.RequestException as e:
             logger.error(f"Request failed: {type(e).__name__}: {str(e)}")
@@ -178,21 +189,56 @@ class MemoClient:
             logger.error(f"Unexpected error: {type(e).__name__}: {str(e)}")
             raise
 
-    def get_memories(self, handle: Optional[str] = None) -> List[Dict]:
+    def get_memories(
+        self,
+        handle: Optional[str] = None,
+        limit: int = 0,
+        cursor: str = "",
+        only_metadata: bool = False,
+        only_summary: bool = False,
+    ) -> Tuple[List[Dict[str, Any]], str]:
+        """
+        Fetch memories with optional pagination and lightweight modes.
+
+        :param handle: Optional. Filter by handle.
+        :param limit: Max number of results (0 = server default).
+        :param cursor: Pagination cursor from previous response's next_cursor.
+        :param only_metadata: If True, return only id/handle/created_at/metadata (no content/description); saves tokens.
+        :param only_summary: If True, return description + metadata but no encrypted content; saves tokens.
+        :return: (list of memory dicts, next_cursor for pagination; empty string if no more pages).
+        """
         url = f"{self.base_url}/api/v1/memory"
-        params = {"handle": handle} if handle else {}
+        params: Dict[str, Any] = {}
+        if handle:
+            params["handle"] = handle
+        if limit > 0:
+            params["limit"] = limit
+        if cursor:
+            params["cursor"] = cursor
+        if only_metadata:
+            params["only_metadata"] = "true"
+        if only_summary:
+            params["only_summary"] = "true"
+
         resp = self.session.get(url, params=params)
         resp.raise_for_status()
-
-        memories = resp.json().get("data", [])
-        # Backend may return `data: null` when there are no memories; normalize to empty list.
+        body = resp.json()
+        memories = body.get("data", [])
         if memories is None:
             memories = []
+        next_cursor = body.get("next_cursor") or ""
 
-        for m in memories:
-            try:
-                decrypted = self.unpack_and_decrypt(m["content"])
-                m["content"] = decrypted.decode('utf-8')
-            except Exception as e:
-                print(f"Decryption failed for {m.get('id')}: {e}")
-        return memories
+        # Decrypt content only when we requested full content (no lightweight mode).
+        if not only_metadata and not only_summary:
+            for m in memories:
+                content = m.get("content")
+                if not content:
+                    continue
+                try:
+                    decrypted = self.unpack_and_decrypt(content)
+                    m["content"] = decrypted.decode("utf-8")
+                except Exception as e:
+                    logger.warning("Decryption failed for %s: %s", m.get("id"), e)
+                    m["content"] = "(decryption failed)"
+
+        return memories, next_cursor
