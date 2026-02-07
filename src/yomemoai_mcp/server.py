@@ -74,27 +74,41 @@ def _format_payload(payload: dict) -> dict:
 
 
 @mcp.tool()
-async def save_memory(content: str, handle: str = "general", description: str = "", metadata: dict = {}) -> str:
+async def save_memory(
+    content: str,
+    handle: str = "general",
+    description: str = "",
+    metadata: dict = {},
+    idempotent_key: str = "",
+) -> str:
     """
     Archives a high-density knowledge asset using the Semantic Fingerprint Protocol.
-    Proactively triggered by the AMP (Autonomous Persistence Trigger) during 'Moments of Truth' 
+    Proactively triggered by the AMP (Autonomous Persistence Trigger) during 'Moments of Truth'
     such as strategic decisions, fact updates, or logic finalization.
 
-    :param content: The actual high-density factual information, decision logic, or SOP. 
+    :param content: The actual high-density factual information, decision logic, or SOP.
                    Maintain context while stripping conversational noise.
-    :param handle: Categorical routing based on Layer ID (L1-L5) or specific project Name. 
-                  Helps in contextual retrieval (PRT).use lowercase and no spaces.
-    :param description: A brief, non-sensitive summary or high-level tag for safe indexing and search. 
-                        STRICT CONSTRAINT: Must NOT contain specific transactional details, 
+    :param handle: Categorical routing based on Layer ID (L1-L5) or specific project Name.
+                  Helps in contextual retrieval (PRT). Use lowercase and no spaces.
+    :param description: A brief, non-sensitive summary or high-level tag for safe indexing and search.
+                        STRICT CONSTRAINT: Must NOT contain specific transactional details,
                         PII, or sensitive affairs to prevent information leakage.
-    :param metadata: MANDATORY. Stores high-dimensional tag data under the 'semantic_fingerprint' key, 
+    :param metadata: MANDATORY. Stores high-dimensional tag data under the 'semantic_fingerprint' key,
                     including ELAP metrics, ontology mode, and engineering VCS status.
+    :param idempotent_key: Optional. When provided (e.g. from load_memories), updates the existing
+                          memory with that key instead of creating a new one. Same handle required.
     """
     logger.debug(
-        f"save_memory called: handle={handle}, description={description}, content_length={len(content)}")
+        "save_memory called: handle=%s description_len=%s content_length=%s idempotent_key=%s",
+        handle, len(description), len(content), idempotent_key or "(new)")
     try:
         result = client.add_memory(
-            content, handle=handle, description=description, metadata=metadata)
+            content,
+            handle=handle,
+            description=description,
+            metadata=metadata,
+            idempotent_key=idempotent_key,
+        )
         logger.debug(f"add_memory response: {result}")
 
         memory_id = result.get("memory_id")
@@ -152,7 +166,7 @@ async def load_memories(
     1. Call first with mode='summary' (default) or mode='metadata' to get a lightweight list.
     2. From the list, decide whether to load the next page (use returned next_cursor) or load full content for the current set (call again with same cursor and mode='full').
 
-    :param handle: Optional. Filter by category (e.g. 'work', 'project-x'). Omit to load across all handles.
+    :param handle: Optional. Filter by category (e.g. 'work', 'project-x'). Omit to load across all handles.if don't know the handle,don't use it.
     :param limit: Number of memories per page (default 20). Use with cursor for pagination.
     :param cursor: Pagination cursor from the previous response's "Next cursor" line. Leave empty for first page.
     :param mode: What to return:
@@ -171,23 +185,26 @@ async def load_memories(
         if mode not in ("summary", "metadata", "full"):
             return f"Invalid mode: {mode}. Use 'summary', 'metadata', or 'full'."
 
-        memories, next_cursor = client.get_memories(
+        memories, next_cursor, total = client.get_memories(
             handle=handle,
             limit=limit if limit > 0 else 20,
             cursor=cursor,
             only_metadata=only_metadata,
             only_summary=only_summary,
         )
-        logger.debug("Retrieved %s memories, next_cursor=%s",
-                     len(memories), bool(next_cursor))
+        logger.debug("Retrieved %s memories, total=%s, next_cursor=%s",
+                     len(memories), total, bool(next_cursor))
 
         if not memories:
             msg = f"No memories found for handle: {handle if handle else 'all'}."
             if cursor:
                 msg += " (Try without cursor for first page.)"
+            if total > 0:
+                msg += " (Total matching: %s)" % total
             return msg
 
         lines = ["### Retrieved Memories (mode=%s):" % mode]
+        lines.append("Total: %s" % total)
         for m in memories:
             handle_value = m.get("handle", "")
             idempotent_key = m.get("idempotent_key") or "N/A"

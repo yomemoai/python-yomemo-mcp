@@ -107,8 +107,8 @@ You can debug the MCP server with breakpoints in Cursor/VS Code:
    Open the `python-yomemo-mcp` folder in Cursor (or the repo with this project inside).
 
 4. **Start the server and attach**  
-   - Run & Debug → choose **「MCP Server (启动并等待附加)」** and start (F5).  
-   - Then choose **「Attach to MCP Server (附加到 5678)」** and start.  
+   - Run & Debug → choose **MCP Server (start and wait for attach)** and start (F5).  
+   - Then choose **Attach to MCP Server (attach to 5678)** and start.  
    - After attach, the server continues; use any MCP tool in Cursor to hit your breakpoints.
 
 5. **Restore normal MCP config** when done (e.g. `uv run yomemoai-mcp` or `uvx yomemoai-mcp`).
@@ -176,8 +176,8 @@ For local development or if the package is not yet published, use the `uv --dire
 }
 ```
 
-**MCP Inspector（无 `cwd` 时）**  
-若工具没有 `cwd` 配置，把工作目录放进 `args` 即可，例如：
+**MCP Inspector (when no `cwd`)**  
+If the tool has no `cwd` config, put the working directory in `args`, for example:
 
 ```json
 {
@@ -189,14 +189,14 @@ For local development or if the package is not yet published, use the `uv --dire
     "yomemoai-mcp"
   ],
   "env": {
-    "MEMO_API_KEY": "你的 API Key",
+    "MEMO_API_KEY": "your_api_key_here",
     "MEMO_PRIVATE_KEY_PATH": "private.pem",
     "MEMO_BASE_URL": "https://api.yomemo.ai"
   }
 }
 ```
 
-把 `--directory` 后面的路径改成你本机项目目录的**绝对路径**。
+Replace the path after `--directory` with the **absolute path** to this project on your machine.
 
 **Important Notes:**
 

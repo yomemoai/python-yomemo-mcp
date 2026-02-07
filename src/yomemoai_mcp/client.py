@@ -117,7 +117,14 @@ class MemoClient:
                              algorithm=hashes.SHA256(), label=None)
             )
 
-    def add_memory(self, content: str, handle: str = "", description: str = "", metadata: Dict = None):
+    def add_memory(
+        self,
+        content: str,
+        handle: str = "",
+        description: str = "",
+        metadata: Dict = None,
+        idempotent_key: str = "",
+    ):
         # Ensure handle is not empty (API requires it)
         if not handle or not handle.strip():
             handle = "general"
@@ -129,8 +136,8 @@ class MemoClient:
         logger.debug(
             f"Adding memory: handle={handle}, content_length={token_size}, description={description}")
         logger.info(
-            "add_memory request: handle=%s content_len=%s description_len=%s content_preview=%s",
-            handle, token_size, len(description or ""),
+            "add_memory request: handle=%s content_len=%s description_len=%s idempotent_key=%s content_preview=%s",
+            handle, token_size, len(description or ""), idempotent_key or "(new)",
             (content[:80] + "..." if len(content) > 80 else content)[:100],
         )
 
@@ -146,6 +153,8 @@ class MemoClient:
                 "from": "yomemoai-mcp",
             }
         }
+        if idempotent_key and idempotent_key.strip():
+            payload["idempotent_key"] = idempotent_key.strip()
 
         url = f"{self.base_url}/api/v1/memory"
         logger.debug(f"POST {url}")
@@ -196,7 +205,7 @@ class MemoClient:
         cursor: str = "",
         only_metadata: bool = False,
         only_summary: bool = False,
-    ) -> Tuple[List[Dict[str, Any]], str]:
+    ) -> Tuple[List[Dict[str, Any]], str, int]:
         """
         Fetch memories with optional pagination and lightweight modes.
 
@@ -205,7 +214,7 @@ class MemoClient:
         :param cursor: Pagination cursor from previous response's next_cursor.
         :param only_metadata: If True, return only id/handle/created_at/metadata (no content/description); saves tokens.
         :param only_summary: If True, return description + metadata but no encrypted content; saves tokens.
-        :return: (list of memory dicts, next_cursor for pagination; empty string if no more pages).
+        :return: (list of memory dicts, next_cursor for pagination, total count matching the query).
         """
         url = f"{self.base_url}/api/v1/memory"
         params: Dict[str, Any] = {}
@@ -227,6 +236,13 @@ class MemoClient:
         if memories is None:
             memories = []
         next_cursor = body.get("next_cursor") or ""
+        total = body.get("total")
+        if total is None:
+            total = 0
+        try:
+            total = int(total)
+        except (TypeError, ValueError):
+            total = 0
 
         # Decrypt content only when we requested full content (no lightweight mode).
         if not only_metadata and not only_summary:
@@ -241,4 +257,4 @@ class MemoClient:
                     logger.warning("Decryption failed for %s: %s", m.get("id"), e)
                     m["content"] = "(decryption failed)"
 
-        return memories, next_cursor
+        return memories, next_cursor, total
